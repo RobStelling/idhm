@@ -21,7 +21,7 @@ d3.queue()                          // Triggers Map JSON and data assynchronous 
   .defer(d3.json, "./json/BRMUE250GC_SIR_05.json")
   .defer(d3.csv, "./csv/IDHM.csv",
     function(d){
-      idhmPorLocal.set(d.CD_GEOCMU, [+d.IDMH2010,+d.IDMH2000,+d.IDHM1991]);
+      idhmPorLocal.set(d.CD_GEOCMU, [+d.IDMH2010,+d.IDMH2000,+d.IDHM1991, d.Município]);
       return {
         Município: d.Município,     // Municipality name - Name case
         CodEstado: +d.CodEstado,    // State code
@@ -82,7 +82,6 @@ function ready(error, brasil, idhm2010) {
       hookTooltip();
   }
 
-
   // Creates tooltip hook actions: WARNING "click" is disabled at this moment
   function hookTooltip()
   {
@@ -92,9 +91,15 @@ function ready(error, brasil, idhm2010) {
     .on("mouseover", function(d){
       var tip = d3.select("div.myTip");
       var k;
-      //var nomeMun = idhmPorLocal.get(d.properties.NM_MUNICIP);
-      var nomeMun = d.properties.NM_MUNICIP;
 
+      var nomeMun = d.properties.NM_MUNICIP;
+      /* Want to declare above as
+       *  var nomeMun = idhmPorLocal.get(d.properties.CD_GEOCMU)[3];
+       * to get municipality case names but first need to include missing
+       * municipalities (that didn't exist when the census was performed)
+       * to the mapping
+       * WARNING: This will affect all idhmPorLocal.get logic, but code will
+       * be simpler than current state of affairs */
       indice = idhmPorLocal.get(d.properties.CD_GEOCMU)
       k = nomeMun + ((indice == undefined) ? "" : (" Índice "+anoIdhm[serieIdhm]+": "+indice[serieIdhm]));
 

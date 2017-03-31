@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="./css/style.css">
+<title>IDHM - BRASIL</title>
+</head>
+<body>
+<div>
+<b style="color:red;font-weight:bold;font-size:25pt;font-family:Arial, Helvetica, Open Sans, sans-serif">BRASIL </b><br>
+<b style="color:gray;font-weight:normal;font-size:20pt;font-family:Arial, Helvetica, Open Sans, sans-serif">ÍNDICE DE DESENVOLVIMENTO HUMANO</b><br>
+<b style="color:gray;font-weight:normal;font-size:20pt;font-family:Arial, Helvetica, Open Sans, sans-serif">POR MUNICÍPIO</b><br>
+<form id="anos">
+	<select name="dropdown" id="selecIndicador" onchange="selecionaAno()">
+		<option value="0" selected>2010</option>
+		<option value="1">2000</option>
+		<option value="2">1991</option>
+	</select>
+</form>
+<script>
+  function selecionaAno() {
+    var s = document.getElementById('selecIndicador');
+
+    if ((selInd=s.selectedIndex) >= 0)
+      d3.selectAll("path").attr("class",  function(d) {var i = idhmPorLocal.get(d.properties.CD_GEOCMU); return i == undefined ? "q9-9" : quantize(i[selInd]); });
+      serieIdhm = selInd; 
+  }
+</script>
+</div>
+<svg id="mapa" width="900" height="800"></svg>
+<svg id="slope" width="900" height="800"></svg>
+<script src="./js/d3v4/d3.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script src="./js/br.js"></script>
+<div>
+<footer>
+<center>
+<br>Fonte de dados: <a href="http://www.atlasbrasil.org.br/2013/">Atlas Brasil</a>, <a href="http://www.cidades.ibge.gov.br/xtras/home.php">IBGE</a> Mapa: <a href="http://downloads.ibge.gov.br/downloads_geociencias.htm">IBGE</a> Copyright © 2017 <a href="http://stelling.cc">Roberto Stelling</a>
+</center>
+</footer>
+</div>
+</body>
+</html>

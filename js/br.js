@@ -1,3 +1,4 @@
+"use strict"
 var svg = d3.select("svg#mapa"),
     width = +svg.attr("width"),
     height = +svg.attr("height");
@@ -9,11 +10,9 @@ var quantize = d3.scaleQuantize()
     .range(d3.range(9).map(function(i) { return "q" + i + "-9"; }));
 
 var projection = d3.geoMercator();
-    //.geoAlbers();
-    //.scale(985)
-    //.center([5,63.5]);
-    //.translate([width / 2, height / 2]);
+
 var serieIdhm = 0, anoIdhm=["2010","2000","1991"], SWIDTH;
+var tooltip;
 
 
 d3.queue()
@@ -68,13 +67,7 @@ function ready(error, brasil, idhm2010) {
   d3.select("#ano").html(" - "+anoIdhm[serieIdhm]);
 
   criaTooltip();
-  hookTooltip();
-/*
-  var dis=d3.selectAll("path")._groups[0];
-  var tam=dis.length;
-  for (i = 0; i<tam; i++)
-    console.log(dis[i].__data__.properties.NM_MUNICIP+","+dis[i].__data__.properties.CD_GEOCMU);
-*/
+
   function criaTooltip()
   {
     tooltip = d3.select("body")
@@ -83,12 +76,15 @@ function ready(error, brasil, idhm2010) {
     //   .style("vertical-align", "middle")
       .classed("myTip", true)
       .html("IDHM Brasil");
+      
+      hookTooltip();
   }
 
 
 
   function hookTooltip()
   {
+    var indice;
     var svg = d3.select(".municipios").selectAll("path")
   
     .on("mouseover", function(d){
@@ -104,17 +100,7 @@ function ready(error, brasil, idhm2010) {
       d3.selectAll("path").filter(function(dd) {
         return dd.properties.CD_GEOCMU == d.properties.CD_GEOCMU;
       }).style("stroke-width", "1");
-/*      
-      d3.selectAll(".microrregiao")
-        .filter(function(dd){
-          switch (cl.status) {
-            case "populacao":
-            case "brasil": 
-            case "microrregiao": return d.properties.CD_GEOCMI==dd.properties.CD_GEOCMI;
-          }
-        })
-        .style("fill", SELECIONADO);
- */
+
       return tooltip.style("visibility", "visible");})
   
     .on("mousemove", function(){
@@ -122,17 +108,6 @@ function ready(error, brasil, idhm2010) {
         .style("left",(d3.event.pageX+25)+"px");})
   
     .on("mouseout", function(d){
-/*
-      d3.selectAll(".microrregiao")
-        .filter(function(dd){ return this.style.fill == SELECIONADO})
-        .style("fill", function(dd){
-          switch(cl.status) {
-            case "populacao":
-            case "brasil":
-            case "microrregiao": return cor(hashDados[dd.properties.CD_GEOCMI]);
-          }
-      });
- */
       d3.selectAll("path").filter(function(dd) {
         return dd.properties.CD_GEOCMU == d.properties.CD_GEOCMU;
       }).style("stroke-width", SWIDTH);

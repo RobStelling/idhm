@@ -1,37 +1,75 @@
 
-.municipios {
+.municipalities {
   fill: none;
   stroke: grey;
-  stroke-width: 0.1;
+  stroke-width: 1e-7;
   stroke-linejoin: round;
   -webkit-transition-duration: 5s;
   transition-duration: 5s;
 }
 
-.idhmTitulo {
+.HDITitle {
   color:red;
   font-weight:bold;
   font-size:25pt;
   font-family:Arial, Helvetica, Open Sans, sans-serif;
 }
 
-.idhmSubTitulo {
-  color:gray;
+.HDISubTitle {
+  color:steelblue;
   font-weight:normal;
   font-size:20pt;
   font-family:Arial, Helvetica, Open Sans, sans-serif;
 }
 
-.q0-9 { fill:#d73027; } /*#fff5f0; } */
-.q1-9 { fill:#f46d43; } /*#fee0d2; } */
-.q2-9 { fill:#fdae61; } /*#fcbba1; } */
-.q3-9 { fill:#fee090; } /*#fc9272; } */
-.q4-9 { fill:#ffffbf; } /*#fb6a4a; } */
-.q5-9 { fill:#e0f3f8; } /*#ef3b2c; } */
-.q6-9 { fill:#abd9e9; } /*#cb181d; } */
-.q7-9 { fill:#74add1; } /*#a50f15; } */
-.q8-9 { fill:#4575b4; } /*#67000d; } */
-.q9-9 { fill:#ffffff; }
+.tdOrd {
+  color:steelblue;
+  font-weight:normal;
+  font-size:10pt;
+  font-family:Arial, Helvetica, Open Sans, sans-serif;
+}
+
+.tpHDI {
+  color:black;
+  font-weight:normal;
+  font-size:10pt;
+  font-family:Arial, Helvetica, Open Sans, sans-serif;
+}
+
+.tpHDIT {
+  color:black;
+  font-weight:normal;
+  font-size:10pt;
+  font-family:Arial, Helvetica, Open Sans, sans-serif;
+}
+
+.tdHDI {
+  color:steelblue;
+  font-weight:normal;
+  font-size:10pt;
+  font-family:Arial, Helvetica, Open Sans, sans-serif;
+}
+
+.tdDown {
+  color:red;
+}
+.tdUp {
+  color:blue;
+}
+.tdSame {
+  color:steelblue;
+}
+
+.q0-9 { } /* fill:#d73027; transition: ease .5s;#fff5f0; } */
+.q1-9 { } /* fill:#f46d43; transition: ease .5s;#fee0d2; } */
+.q2-9 { } /* fill:#fdae61; transition: ease .5s;#fcbba1; } */
+.q3-9 { } /* fill:#fee090; transition: ease .5s;#fc9272; } */
+.q4-9 { } /* fill:#ffffbf; transition: ease .5s;#fb6a4a; } */
+.q5-9 { } /* fill:#e0f3f8; transition: ease .5s;#ef3b2c; } */
+.q6-9 { } /* fill:#abd9e9; transition: ease .5s;#cb181d; } */
+.q7-9 { } /* fill:#74add1; transition: ease .5s;#a50f15; } */
+.q8-9 { } /* fill:#4575b4; transition: ease .5s;#67000d; } */
+.q9-9 { } /* fill:#ffffff; transition: ease .5s; */
 
 .myTip {
   display: table-cell;

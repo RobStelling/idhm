@@ -3,6 +3,8 @@
  * Visualizaiton of Brazil HDI stats by municipality
  * Covers the years 1991, 2000 and 2010 for 5572 municipalities */
 
+const RANGE = 10,
+      COLORMARK = "black";
 var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
     tableSel = undefined,
     width = 900, //+svg.attr("width"),
@@ -11,9 +13,9 @@ var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
                                     // CD_GEOCMU -> [IDHM2010, IDHM2000, IDHM1991, MunicipalityName]
     quantize = d3.scaleQuantize()   // Quantize scale for the map colors, q[i]-9 styles are defined at CSS level
       .domain([0,1])
-      .range(d3.range(10).map(function(i){ return i; /* return "q" + i + "-9"; */})),
+      .range(d3.range(RANGE).map(function(i){ return i; /* return "q" + i + "-9"; */})),
     projection = d3.geoMercator(),  // Map projection
-    HDISeries = 0,                  // Current HDI series 0: 2010, 1: 2000, 2: 1991, index for yearHDI
+    HDISeries = +d3.select("#selecIndicador").node().value,                  // Current HDI series 0: 2010, 1: 2000, 2: 1991, index for yearHDI
     yearHDI=["2010","2000","1991"], // HDI years
     popMun=d3.map(),                // Population by Municipality (CD_GEOCMU): [[pop2010, pop2000, pop1991], est2017]
     swidth,                         // Stroke width, defined at css level, fetched here for reuse
@@ -29,7 +31,7 @@ function selectYear() {
       .transition().duration(1000).ease(d3.easeCubicInOut)
       .style("fill", function(d) {
                        var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-                       return i == undefined ? color(10) : color(quantize(i[selInd]));
+                       return i == undefined ? color(RANGE) : color(quantize(i[selInd]));
                      }
     );
       
@@ -44,10 +46,14 @@ function color(i) {
   return colorMap[i];
 }
 
+function numBrazil(number, options) {
+  return number.toLocaleString("pt-BR", options);
+}
+
 /* Can be called from a D3 selection or DOM selection.
  * CD_GEOCMU will come from data properties (d.properties) if it is being called from a DOM
  */
-function munOnMouseover(d) {
+function munMouseover(d) {
   var tip = d3.select("div.myTip");
   var populacao2017, populacaoAno;
   var k;
@@ -67,10 +73,10 @@ function munOnMouseover(d) {
   k = nomeMun + " ("+munData.estado+")";
   if (populacao2017 != 0) {
     if (!isNaN(indice[HDISeries]))
-      k += "<br>Índice "+yearHDI[HDISeries]+": "+indice[HDISeries].toLocaleString('pt-BR');
+      k += "<br>Índice "+yearHDI[HDISeries]+": "+numBrazil(indice[HDISeries]);
     if (!isNaN(populacaoAno))
-      k += "<br>Populacao "+yearHDI[HDISeries]+": "+populacaoAno.toLocaleString('pt-BR');
-    k += "<br>População 2017: " +populacao2017.toLocaleString('pt-BR');
+      k += "<br>Populacao "+yearHDI[HDISeries]+": "+numBrazil(populacaoAno);
+    k += "<br>População 2017: " +numBrazil(populacao2017);
   }
 
   tip.html(k);
@@ -79,6 +85,19 @@ function munOnMouseover(d) {
   }).style("stroke-width", "5px").style("stroke", "red");
 
   return tooltip.style("visibility", "visible");
+}
+
+function mouseMove(d) {
+ // Just moves the tooltip around
+  return tooltip.style("top", (d3.event.pageY-20)+"px")
+                .style("left",(d3.event.pageX+25)+"px");
+}
+
+function munMouseout(d) {
+  d3.selectAll("path").filter(function(dd) {
+    return dd.properties.CD_GEOCMU == d.properties.CD_GEOCMU;
+  }).style("stroke-width", swidth);
+  return tooltip.style("visibility", "hidden");
 }
 
 function ignore() {
@@ -100,17 +119,21 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
     tableSel=undefined; /* include code to cancel .on */
   }
   tableSel=d3.selectAll(".tpHDI")
-    .on("mouseover", munOnMouseover)
-    .on("mousemove", function(){
-      return tooltip.style("top", (d3.event.pageY-20)+"px")
-        .style("left",(d3.event.pageX+25)+"px");})
-    .on("mouseout", function(d){
-      var CD_GEOCMU = this.attributes.name.nodeValue;
-      d3.selectAll("path").filter(function(dd) {
-        return dd.properties.CD_GEOCMU == CD_GEOCMU;
-      }).style("stroke-width", swidth);
-      return tooltip.style("visibility", "hidden");})
+    .on("mouseover", munMouseover)
+    .on("mousemove", tableMousemove)
+    .on("mouseout", tableMouseout)
     .on("click", ignore);
+
+  function tableMousemove(d) {
+    return mouseMove(d);
+  }
+  function tableMouseout(d) {
+    var CD_GEOCMU = this.attributes.name.nodeValue;
+    d3.selectAll("path").filter(function(dd) {
+      return dd.properties.CD_GEOCMU == CD_GEOCMU;
+    }).style("stroke-width", swidth);
+    return tooltip.style("visibility", "hidden");    
+  }
 }
 
 function tableFill(year) { // Fill the table with the correct Municipalities for a specific Year
@@ -148,7 +171,7 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
       .attr("name", ranks[year][i].CD_GEOCMU);
     /* HDI for (i) position 0/1/2 IDHM2010/IDHM2000/IDHM1991 */
     d3.select("#tv"+(i+1))
-      .html(ranks[year][i]["IDHM"+yearHDI[year]].toLocaleString('pt-BR', {minimumFractionDigits: 3}));
+      .html(numBrazil(ranks[year][i]["IDHM"+ yearHDI[year]], {minimumFractionDigits: 3}));
       //.style("color", (dir==""|dir==" (=)")?"black":(dir==" (-")?"red":"steelblue");
       // d3.selectAll("path").filter(function(d){return d.properties.CD_GEOCMU == "1101807"})
   }
@@ -284,10 +307,11 @@ function ready(error, brasil, HDI, popEst) {
    /**/
 
 
-  criaTooltip();
+  createTooltip();
+  createLabel();
 
   // Creates tool tip object
-  function criaTooltip()
+  function createTooltip()
   {
     tooltip = d3.select("body")
       .append("div")  
@@ -301,18 +325,97 @@ function ready(error, brasil, HDI, popEst) {
   function hookTooltip()
   {
     var svg = d3.select(".municipalities").selectAll("path")
-      .on("mouseover", munOnMouseover)
-
-      .on("mousemove", function(){
-        return tooltip.style("top", (d3.event.pageY-20)+"px")
-          .style("left",(d3.event.pageX+25)+"px");})
-
-      .on("mouseout", function(d){
-        d3.selectAll("path").filter(function(dd) {
-          return dd.properties.CD_GEOCMU == d.properties.CD_GEOCMU;
-        }).style("stroke-width", swidth);
-
-        return tooltip.style("visibility", "hidden");})
+      .on("mouseover", munMouseover)
+      .on("mousemove", munMousemove)
+      .on("mouseout", munMouseout)
       .on("click", ignore);
   }
+
+  function munMousemove(d) {
+    return mouseMove(d);
+  }
+
+  function createLabel()
+  {
+    var colorList = [...Array(RANGE).keys()].map(i => [i, color(i)]);
+    const WIDTH = 17, HEIGHT = 75, X0 = 870, Y0 = 40;
+
+    svg.append("g")
+      .attr("class", "label")
+      .selectAll("rect")
+        .data(colorList)
+      .enter().append("rect")
+      .attr("x", X0)
+      .attr("y", function(d){return d[0]*HEIGHT+Y0;})
+      .attr("width", WIDTH)
+      .attr("height", HEIGHT)
+      .style("fill", function(d){return d[1];});
+
+    labelTooltip();
+
+    // Creates tooltip hook actions: WARNING "click" is disabled at this moment
+    function labelTooltip()
+    {
+      var svg = d3.select(".label").selectAll("rect")
+        .on("mouseover", labelMouseover)
+        .on("mousemove", labelMousemove)
+        .on("mouseout", labelMouseout)
+        .on("click", ignore);
+    }
+
+    function labelMouseover(d) {
+      const FACTOR = 1/ RANGE; 
+      var tip = d3.select("div.myTip");
+      var minV = +(d[0]*FACTOR).toPrecision(1),
+          maxV = +(d[0]*FACTOR+FACTOR).toPrecision(1);
+      var k, municipios;
+
+      municipios = svg.select(".municipalities").selectAll("path")
+        .filter(function(mun){
+          var GEOCMU, indice;
+          if (mun.properties.CD_GEOCMU == undefined)
+            return false;
+          GEOCMU = mun.properties.CD_GEOCMU;
+          indice = HDIByLocality.get(GEOCMU)[HDISeries];
+
+          return indice >= minV && indice <= maxV;
+          });
+      municipios
+        .transition().duration(250)
+        .style("fill", COLORMARK);
+      k = "IDHM: de " + numBrazil(minV) + " a " + numBrazil(maxV) + " - " + numBrazil(municipios._groups[0].length);
+      tip.html(k);
+      return tooltip.style("visibility", "visible");
+    }
+
+    function labelMousemove(d) {
+      mouseMove(d);
+    }
+
+    function labelMouseout(d) {
+      var noTrail = d3.select("#trailCB").node().checked == false;
+      if (noTrail)
+        repaintMARKED();
+      return tooltip.style("visibility", "hidden");
+    }
+  }
+}
+
+function repaintMARKED() {
+  svg.select(".municipalities").selectAll("path")
+    .filter(function(mun){ return d3.select(this).style("fill") == "rgb(0, 0, 0)";})
+    .transition().duration(250)
+    .style("fill", function(d){
+      var i = HDIByLocality.get(d.properties.CD_GEOCMU);
+      return color(quantize(i[HDISeries]));
+    });
+}
+
+function repaintMap() {
+  svg.select(".municipalities").selectAll("path")
+    //.transition().duration(1000).ease(d3.easeCubicInOut)
+    .style("fill", function(d) {
+      var i = HDIByLocality.get(d.properties.CD_GEOCMU);
+      return color(quantize(i[HDISeries]));
+    });
 }

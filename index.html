@@ -20,10 +20,14 @@
       <div class="row">
           <form id="years">
             <select name="dropdown" id="selecIndicador" onchange="selectYear()">
-              <option value="0" selected>2010</option>
+              <option value="0">2010</option>
               <option value="1">2000</option>
-              <option value="2">1991</option>
+              <option value="2" selected>1991</option>
             </select>
+          </form>
+          &nbsp;&nbsp;
+          <form id="trail">
+            <input type="checkbox" id="trailCB" name="trail" onchange="repaintMARKED()"> Deixar rastro<br>
           </form>
           <script>
 
@@ -47,7 +51,7 @@
       <div class="row">
         <footer>
           <center>
-            <br>Fonte de dados: <a href="http://www.atlasbrasil.org.br/2013/">Atlas Brasil</a>, <a href="http://www.cidades.ibge.gov.br/xtras/home.php">IBGE</a> Mapa: <a href="http://downloads.ibge.gov.br/downloads_geociencias.htm">IBGE</a> Copyright © 2017 <a href="http://stelling.cc">Roberto Stelling</a>
+            <br>Fonte de dados: <a href="http://www.atlasbrasil.org.br/2013/">Atlas Brasil</a>, <a href="http://www.cidades.ibge.gov.br/">IBGE</a> Mapa: <a href="http://downloads.ibge.gov.br/downloads_geociencias.htm">IBGE</a> Copyright © 2017 <a href="http://stelling.cc">Roberto Stelling</a>
           </center>
         </footer>
       </div>

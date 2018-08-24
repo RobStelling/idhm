@@ -11,6 +11,7 @@ var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
     height = 800,  // +svg.attr("height"),
     HDIByLocality = d3.map(),        // Maps municipality GEOCMU with their HDI per year
                                     // CD_GEOCMU -> [IDHM2010, IDHM2000, IDHM1991, MunicipalityName]
+    totalMunicipalities = 0,
     quantize = d3.scaleQuantize()   // Quantize scale for the map colors, q[i]-9 styles are defined at CSS level
       .domain([0,1])
       .range(d3.range(RANGE).map(function(i){ return i; /* return "q" + i + "-9"; */})),
@@ -209,6 +210,9 @@ d3.queue()                          // Triggers Map JSON and data assynchronous 
     })
   .defer(d3.csv, "./csv/pop91_00_10_17.csv",
     function(d){
+      if (+d.PopEst2017 > 0)
+        totalMunicipalities++;
+
       popMun.set(d.CD_GEOCMU, {populacao:[+d.Pop2010, +d.Pop2000, +d.Pop1991], estimativa: +d.PopEst2017, estado: d.UF});
       return {
         CD_GEOCMU: d.CD_GEOCMU,
@@ -368,9 +372,9 @@ function ready(error, brasil, HDI, popEst) {
       var tip = d3.select("div.myTip");
       var minV = +(d[0]*FACTOR).toPrecision(1),
           maxV = +(d[0]*FACTOR+FACTOR).toPrecision(1);
-      var k, municipios;
+      var k, municipalities, numMunicipalities;
 
-      municipios = svg.select(".municipalities").selectAll("path")
+      municipalities = svg.select(".municipalities").selectAll("path")
         .filter(function(mun){
           var GEOCMU, indice;
           if (mun.properties.CD_GEOCMU == undefined)
@@ -380,10 +384,16 @@ function ready(error, brasil, HDI, popEst) {
 
           return indice >= minV && indice <= maxV;
           });
-      municipios
+      municipalities
         .transition().duration(250)
         .style("fill", COLORMARK);
-      k = "IDHM: de " + numBrazil(minV) + " a " + numBrazil(maxV) + " - " + numBrazil(municipios._groups[0].length);
+
+      numMunicipalities = municipalities._groups[0].length;
+
+      k = "IDHM: de " + numBrazil(minV) + " a " + numBrazil(maxV) +
+          " - " +
+          numBrazil(numMunicipalities) +
+          " (" + numBrazil(numMunicipalities/totalMunicipalities*100 , {maximumFractionDigits: 2})+ "%)";
       tip.html(k);
       return tooltip.style("visibility", "visible");
     }

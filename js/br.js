@@ -7,7 +7,7 @@ const RANGE = 10,
       COLORMARK = "black";
 var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
     tableSel = undefined,
-    width = 900, //+svg.attr("width"),
+    width = 870, //+svg.attr("width"),
     height = 800,  // +svg.attr("height"),
     HDIByLocality = d3.map(),        // Maps municipality GEOCMU with their HDI per year
                                     // CD_GEOCMU -> [IDHM2010, IDHM2000, IDHM1991, MunicipalityName]
@@ -342,7 +342,7 @@ function ready(error, brasil, HDI, popEst) {
   function createLabel()
   {
     var colorList = [...Array(RANGE).keys()].map(i => [i, color(i)]);
-    const WIDTH = 17, HEIGHT = 75, X0 = 870, Y0 = 40;
+    const WIDTH = 22, HEIGHT = 75, X0 = 850, Y0 = 40;
 
     svg.append("g")
       .attr("class", "label")
@@ -399,7 +399,8 @@ function ready(error, brasil, HDI, popEst) {
     }
 
     function labelMousemove(d) {
-      mouseMove(d);
+      return mouseMove(d);
+
     }
 
     function labelMouseout(d) {

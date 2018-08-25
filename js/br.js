@@ -7,18 +7,20 @@ const RANGE = 10,
       COLORMARK = "black";
 var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
     tableSel = undefined,
-    width = 870, //+svg.attr("width"),
+    width = 875, //+svg.attr("width"),
     height = 800,  // +svg.attr("height"),
     HDIByLocality = d3.map(),        // Maps municipality GEOCMU with their HDI per year
                                     // CD_GEOCMU -> [IDHM2010, IDHM2000, IDHM1991, MunicipalityName]
     totalMunicipalities = 0,
+    totalArea = 0,
     quantize = d3.scaleQuantize()   // Quantize scale for the map colors, q[i]-9 styles are defined at CSS level
       .domain([0,1])
       .range(d3.range(RANGE).map(function(i){ return i; /* return "q" + i + "-9"; */})),
     projection = d3.geoMercator(),  // Map projection
     HDISeries = +d3.select("#selecIndicador").node().value,                  // Current HDI series 0: 2010, 1: 2000, 2: 1991, index for yearHDI
     yearHDI=["2010","2000","1991"], // HDI years
-    popMun=d3.map(),                // Population by Municipality (CD_GEOCMU): [[pop2010, pop2000, pop1991], est2017]
+    popMun = d3.map(),              // Population by Municipality (CD_GEOCMU): [[pop2010, pop2000, pop1991], est2017]
+    areaMun = d3.map(),
     swidth,                         // Stroke width, defined at css level, fetched here for reuse
     tooltip,                        // Map tooltip object
     numMun = 30,                    // # of Municipalities on the list
@@ -72,11 +74,13 @@ function munMouseover(d) {
   populacao2017 = munData.estimativa;
   populacaoAno = munData.populacao[HDISeries];
   k = nomeMun + " ("+munData.estado+")";
+  if (areaMun.get(CD_GEOCMU).area > 0)
+    k += "<br>Área: " + numBrazil(areaMun.get(CD_GEOCMU).area, {maximumFractionDigits: 2}) + " km<sup>2</sup>";
   if (populacao2017 != 0) {
     if (!isNaN(indice[HDISeries]))
       k += "<br>Índice "+yearHDI[HDISeries]+": "+numBrazil(indice[HDISeries]);
     if (!isNaN(populacaoAno))
-      k += "<br>Populacao "+yearHDI[HDISeries]+": "+numBrazil(populacaoAno);
+      k += "<br>Populaço "+yearHDI[HDISeries]+": "+numBrazil(populacaoAno);
     k += "<br>População 2017: " +numBrazil(populacao2017);
   }
 
@@ -223,10 +227,21 @@ d3.queue()                          // Triggers Map JSON and data assynchronous 
         Pop2010: +d.Pop2010
       };
     })
+  .defer(d3.csv, "./csv/AR_BR_MUN_2017.csv",
+    function(d){
+      var munArea = +d.AR_MUN_2017;
+      if (munArea > 0)
+        totalArea += munArea;
+      areaMun.set(d.CD_GCMUN, {area:munArea});
+      return {
+        CD_GEOCMU: d.CD_GCMUN,
+        Area: munArea
+      };
+    })
   .await(ready);
 
 // Callback for queued assynchronous deferred actions
-function ready(error, brasil, HDI, popEst) {
+function ready(error, brasil, HDI, popEst, areasMun) {
   if (error) throw error;
   // Fits projection to SVG size
   projection.fitSize([width, height], topojson.feature(brasil, brasil.objects.BRMUN).features);
@@ -342,7 +357,7 @@ function ready(error, brasil, HDI, popEst) {
   function createLabel()
   {
     var colorList = [...Array(RANGE).keys()].map(i => [i, color(i)]);
-    const WIDTH = 22, HEIGHT = 75, X0 = 850, Y0 = 40;
+    const WIDTH = 25, HEIGHT = 75, X0 = 850, Y0 = 40;
 
     svg.append("g")
       .attr("class", "label")
@@ -385,7 +400,7 @@ function ready(error, brasil, HDI, popEst) {
           return indice >= minV && indice <= maxV;
           });
       municipalities
-        .transition().duration(250)
+        //.transition().duration(250)
         .style("fill", COLORMARK);
 
       numMunicipalities = municipalities._groups[0].length;
@@ -415,7 +430,7 @@ function ready(error, brasil, HDI, popEst) {
 function repaintMARKED() {
   svg.select(".municipalities").selectAll("path")
     .filter(function(mun){ return d3.select(this).style("fill") == "rgb(0, 0, 0)";})
-    .transition().duration(250)
+    //.transition().duration(250)
     .style("fill", function(d){
       var i = HDIByLocality.get(d.properties.CD_GEOCMU);
       return color(quantize(i[HDISeries]));

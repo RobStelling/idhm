@@ -21,27 +21,25 @@
     <div class="row"><b class="HDISubTitle">ÍNDICE DE DESENVOLVIMENTO HUMANO POR MUNICÍPIO</b><br></div>
     <div class="row">
       <form id="years">
-        <select name="dropdown" id="selecIndicador" onchange="selectYear()">
+        <select id="selecIndicador" onchange="selectYearSeries()">
           <option value="2010">2010</option>
           <option value="2000">2000</option>
           <option value="1991" selected>1991</option>
         </select>
       </form>
       &nbsp;&nbsp;
+      <form id="serie">
+        <select id="selecSerie" onchange="selectYearSeries()">
+          <option value="T" selected>Total</option>
+          <option value="L">Expectativa de vida</option>
+          <option value="E">Educação</option>
+          <option value="R">Renda</option>
+        </select>
+      </form>
+      &nbsp;&nbsp;
       <form id="trail">
         <input type="checkbox" id="trailCB" name="trail" onchange="repaintMARKED()"> Deixar rastro<br>
       </form>
-      <!---
-          &nbsp;&nbsp;
-          <form id="series">
-            <select name="seriesDD" id="" onchange="">
-              <option value="total" selected>Total</option>
-              <option value="vida">Vida</option>
-              <option value="educação">Educação</option>
-              <option value="renda">Renda</option>
-            </select>
-          </form>
-      -->
     </div>
     <div class="row">
       <div class="col-4">

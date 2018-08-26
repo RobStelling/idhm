@@ -17,8 +17,7 @@ var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
       .domain([0,1])
       .range(d3.range(RANGE).map(function(i){ return i; /* return "q" + i + "-9"; */})),
     projection = d3.geoMercator(),  // Map projection
-    HDISeries = +d3.select("#selecIndicador").node().value,                  // Current HDI series 0: 2010, 1: 2000, 2: 1991, index for yearHDI
-    yearHDI=["2010","2000","1991"], // HDI years
+    HDISeries = +d3.select("#selecIndicador").node().value,                  // Current HDI series 2010: HDMI2010, 2000: HDMI2000, 1991: HDMI1991
     popMun = d3.map(),              // Population by Municipality (CD_GEOCMU): [[pop2010, pop2000, pop1991], est2017]
     areaMun = d3.map(),
     swidth,                         // Stroke width, defined at css level, fetched here for reuse
@@ -26,15 +25,17 @@ var svg = d3.select("svg#mapa"),    // Map SVG object, defined at index.html
     numMun = 30,                    // # of Municipalities on the list
     ranks;                          // First numMun municipalities by HDI
 
+
+// Rever uso de HDISeries e chamada a tableFill
 function selectYear() {
   var s = document.getElementById('selecIndicador'), selInd;
 
-  if ((selInd=s.selectedIndex) >= 0)
+  if ((selInd=s.value) >= 0)
     d3.selectAll("path")
       .transition().duration(1000).ease(d3.easeCubicInOut)
       .style("fill", function(d) {
                        var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-                       return i == undefined ? color(RANGE) : color(quantize(i[selInd]));
+                       return i == undefined ? color(RANGE) : color(quantize(i["IDHM"+selInd]));
                      }
     );
       
@@ -67,20 +68,21 @@ function munMouseover(d) {
   else                                      // Use name attr from table (see tablePrep and tableFill)
     CD_GEOCMU = this.attributes.name.nodeValue;
 
-  nomeMun = HDIByLocality.get(CD_GEOCMU)[3];
 
   indice = HDIByLocality.get(CD_GEOCMU);
+  nomeMun = indice.municipio;
+
   munData = popMun.get(CD_GEOCMU);
   populacao2017 = munData.estimativa;
-  populacaoAno = munData.populacao[HDISeries];
+  populacaoAno = munData.populacao["p"+HDISeries];
   k = nomeMun + " ("+munData.estado+")";
   if (areaMun.get(CD_GEOCMU).area > 0)
     k += "<br>Área: " + numBrazil(areaMun.get(CD_GEOCMU).area, {maximumFractionDigits: 2}) + " km<sup>2</sup>";
   if (populacao2017 != 0) {
-    if (!isNaN(indice[HDISeries]))
-      k += "<br>Índice "+yearHDI[HDISeries]+": "+numBrazil(indice[HDISeries]);
+    if (!isNaN(indice["IDHM"+HDISeries]))
+      k += "<br>Índice "+HDISeries+": "+numBrazil(indice["IDHM"+HDISeries]);
     if (!isNaN(populacaoAno))
-      k += "<br>Populaço "+yearHDI[HDISeries]+": "+numBrazil(populacaoAno);
+      k += "<br>Populaço "+HDISeries+": "+numBrazil(populacaoAno);
     k += "<br>População 2017: " +numBrazil(populacao2017);
   }
 
@@ -142,23 +144,24 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
 }
 
 function tableFill(year) { // Fill the table with the correct Municipalities for a specific Year
-  var i, munRanks, diff, dir, cor, tclose;
+  var i, munRanks, diff, dir, cor, tclose, previous = {2010:2000, 2000:1991};
+
 
   diff = ""; dir = "";
   cor = "<text>";
   tclose = "</text>";
 
   d3.select("#leg1").style("display", "none");
-  d3.select("#tTit").html(numMun+" maiores IDHMs do Brasil - "+yearHDI[year]);
+  d3.select("#tTit").html(numMun+" maiores IDHMs do Brasil - "+year);
   for(i=0;i<numMun;i++) {
-    munRanks = HDIByLocality.get(ranks[year][i].CD_GEOCMU)[4]; // Array with the 3 HDI rank positions [R2010, R2000, R1991] for the given CD.GEOCMU
-    if (year < (yearHDI.length-1)) { // If it is not 1991 then set Municipality position change
-      diff = Math.abs(munRanks[year] - munRanks[year+1]);
+    munRanks = HDIByLocality.get(ranks["r"+year][i].CD_GEOCMU).ranking; // Dict with ranks for each collected year: r2010, r2000, r1991, for the given CD.GEOCMU
+    if (previous[year] != undefined) { // If there is a previous rank
+      diff = Math.abs(munRanks["r"+year] - munRanks["r"+previous[year]]);
       if (diff == 0) { // if there was no change from previous year
         cor = "<text style='color:steelblue'>";
         dir = " (=)"
       } else { // else if there was a rank change then adds a ")" to diff and indicate the direction of the change
-        if (munRanks[year] > munRanks[year+1]) {
+        if (munRanks["r"+year] > munRanks["r"+previous[year]]) {
           cor = "<text style='color:red'>";
           dir = " (-"+diff+")";
         } else {
@@ -169,14 +172,14 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
       }
     }
     d3.select("#tdOrd"+(i+1))
-      .html(munRanks[year]+cor+dir+tclose); // Current rank
+      .html(munRanks["r"+year]+cor+dir+tclose); // Current rank
     /* Municipality Name for (i) position in (year - 0/1/2 2010/2000/1991) */
     d3.select("#tp"+(i+1))
-      .html(ranks[year][i].Município)
-      .attr("name", ranks[year][i].CD_GEOCMU);
+      .html(ranks["r"+year][i].Município)
+      .attr("name", ranks["r"+year][i].CD_GEOCMU);
     /* HDI for (i) position 0/1/2 IDHM2010/IDHM2000/IDHM1991 */
     d3.select("#tv"+(i+1))
-      .html(numBrazil(ranks[year][i]["IDHM"+ yearHDI[year]], {minimumFractionDigits: 3}));
+      .html(numBrazil(ranks["r"+year][i]["IDHM"+year], {minimumFractionDigits: 3}));
       //.style("color", (dir==""|dir==" (=)")?"black":(dir==" (-")?"red":"steelblue");
       // d3.selectAll("path").filter(function(d){return d.properties.CD_GEOCMU == "1101807"})
   }
@@ -188,7 +191,18 @@ d3.queue()                          // Triggers Map JSON and data assynchronous 
   .defer(d3.json, "./json/BRMUE250GC_SIR_05.json")
   .defer(d3.csv, "./csv/IDHM.csv",
     function(d){
-      HDIByLocality.set(d.CD_GEOCMU, [+d.IDHM2010,+d.IDHM2000,+d.IDHM1991, d.Município, [+d.R2010, +d.R2000, +d.R1991], d.Estado]);
+      HDIByLocality.set(d.CD_GEOCMU, {
+                        IDHM2010: +d.IDHM2010,
+                        IDHM2000: +d.IDHM2000,
+                        IDHM1991: +d.IDHM1991,
+                        municipio: d.Município,
+                        ranking: {
+                          r2010: +d.R2010,
+                          r2000: +d.R2000,
+                          r1991: +d.R1991
+                        },
+                        estado: d.Estado
+                      });
       return {
         Município: d.Município,     // Municipality name - Name case
         CodEstado: +d.CodEstado,    // State code
@@ -217,7 +231,13 @@ d3.queue()                          // Triggers Map JSON and data assynchronous 
       if (+d.PopEst2017 > 0)
         totalMunicipalities++;
 
-      popMun.set(d.CD_GEOCMU, {populacao:[+d.Pop2010, +d.Pop2000, +d.Pop1991], estimativa: +d.PopEst2017, estado: d.UF});
+      popMun.set(d.CD_GEOCMU, {
+                 populacao: {
+                    p2010: +d.Pop2010,
+                    p2000: +d.Pop2000,
+                    p1991: +d.Pop1991 },
+                 estimativa: +d.PopEst2017,
+                 estado: d.UF} );
       return {
         CD_GEOCMU: d.CD_GEOCMU,
         PopEst2017: +d.PopEst2017,
@@ -259,73 +279,18 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       // .attr("class", function(d) {var i = HDIByLocality.get(d.properties.CD_GEOCMU); return i == undefined ? "q9-9" : quantize(i[HDISeries]); })
       .attr("d", path)
       // .transition().duration(2000).ease(d3.easeCubicInOut)
-      .style("fill", function(d) {var i = HDIByLocality.get(d.properties.CD_GEOCMU); return color(quantize(i[HDISeries])); });
+      .style("fill", function(d) {var i = HDIByLocality.get(d.properties.CD_GEOCMU); return color(quantize(i["IDHM"+HDISeries])); });
 
   // Fetches stroke width
   swidth = d3.select(".municipalities").style("stroke-width");
 
   // The three top numMun HDIs
-  ranks = [HDI.slice().sort(function(a,b){return a.R2010 - b.R2010;}).slice(0,numMun),
-           HDI.slice().sort(function(a,b){return a.R2000 - b.R2000;}).slice(0,numMun),
-           HDI.slice().sort(function(a,b){return a.R1991 - b.R1991;}).slice(0,numMun)]
+  ranks = { r2010: HDI.slice().sort(function(a,b){return a.R2010 - b.R2010;}).slice(0,numMun),
+            r2000: HDI.slice().sort(function(a,b){return a.R2000 - b.R2000;}).slice(0,numMun),
+            r1991: HDI.slice().sort(function(a,b){return a.R1991 - b.R1991;}).slice(0,numMun)};
 
   tablePrep();
   tableFill(HDISeries);
-
-
-  //label(svg, x, y, dx, dy, color, quantize.range().length)
-
-  /*
-   * Builds a scale lable
-   * 
-   * Parameters
-   * selection - Selection where the label will be written to
-   /*
-  
-  function label(selection, x, y, w, h, color, quantize, length)
-  {
-      var mapaCores, cor;
-
-     selection.selectAll("rect") // Monta legenda
-      .data(cor.range().map(function(d, i) {
-      return {
-        y0: i ? y(cor.domain()[i - 1]) : y.range()[0],
-        y1: i < cor.domain().length ? y(cor.domain()[i]) : y.range()[1],
-        z: d
-      };
-    }))
-      .enter().append("rect")
-      .attr("width", 10)
-      //.attr("x", 300)
-      .attr("y", function(d) { return d.y0; })
-      .attr("height", function(d) { return d.y1 - d.y0; })
-      .attr("class", "retMapa")
-      .style("fill", function(d) { return d.z; });
-
-
-
-
-      mapaCores = d3.scale.threshold().domain().range(lenght);
-      cor = d3.scale.threshold().domain(domEixo).range(myRange);
-      selection.selectAll("rect") // Creates color label
-        .data(cor.range().map(function(d, i) {
-          return {
-            y0: i ? y(cor.domain()[i - 1]) : y.range()[0],
-            y1: i < cor.domain().length ? y(cor.domain()[i]) : y.range()[1],
-            z: d
-          };
-        }))
-        .enter().append("rect")
-        .attr("width", 10)
-      //.attr("x", 300)
-        .attr("y", function(d) { return d.y0; })
-        .attr("height", function(d) { return d.y1 - d.y0; })
-        .attr("class", "retMapa")
-        .style("fill", function(d) { return d.z; });
-  }
-   /**/
-
-
   createTooltip();
   createLabel();
 
@@ -395,7 +360,7 @@ function ready(error, brasil, HDI, popEst, areasMun) {
           if (mun.properties.CD_GEOCMU == undefined)
             return false;
           GEOCMU = mun.properties.CD_GEOCMU;
-          indice = HDIByLocality.get(GEOCMU)[HDISeries];
+          indice = HDIByLocality.get(GEOCMU)["IDHM"+HDISeries];
 
           return indice >= minV && indice <= maxV;
           });
@@ -433,7 +398,7 @@ function repaintMARKED() {
     //.transition().duration(250)
     .style("fill", function(d){
       var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-      return color(quantize(i[HDISeries]));
+      return color(quantize(i["IDHM"+HDISeries]));
     });
 }
 
@@ -442,6 +407,6 @@ function repaintMap() {
     //.transition().duration(1000).ease(d3.easeCubicInOut)
     .style("fill", function(d) {
       var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-      return color(quantize(i[HDISeries]));
+      return color(quantize(i["IDHM"+HDISeries]));
     });
 }

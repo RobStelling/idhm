@@ -166,7 +166,7 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
   d3.select("#leg1").style("display", "none");
   d3.select("#tTit").html(numMun + " maiores IDHMs do Brasil - " + year);
   for (i = 0; i < numMun; i++) {
-    munRanks = HDIByLocality.get(ranks["r" + year][i].CD_GEOCMU).ranking; // Dict with ranks for each collected year: r2010, r2000, r1991, for the given CD.GEOCMU
+    munRanks = HDIByLocality.get(ranks["r" + serie + year][i].CD_GEOCMU).ranking; // Dict with ranks for each collected year: r2010, r2000, r1991, for the given CD.GEOCMU
     if (previous[year] != undefined) { // If there is a previous rank
       diff = Math.abs(munRanks["r" + year] - munRanks["r" + previous[year]]);
       if (diff == 0) { // if there was no change from previous year
@@ -187,11 +187,11 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
       .html(munRanks["r" + year] + cor + dir + tclose); // Current rank
     /* Municipality Name for (i) position in (year - 0/1/2 2010/2000/1991) */
     d3.select("#tp" + (i + 1))
-      .html(ranks["r" + year][i].Município)
-      .attr("name", ranks["r" + year][i].CD_GEOCMU);
+      .html(ranks["r" + serie + year][i].Município)
+      .attr("name", ranks["r" + serie + year][i].CD_GEOCMU);
     /* HDI for (i) position 0/1/2 IDHM2010/IDHM2000/IDHM1991 */
     d3.select("#tv" + (i + 1))
-      .html(numBrazil(ranks["r" + year][i]["IDHM" + serie + year], {
+      .html(numBrazil(ranks["r" + serie + year][i]["IDHM" + serie + year], {
         minimumFractionDigits: 3
       }));
     //.style("color", (dir==""|dir==" (=)")?"black":(dir==" (-")?"red":"steelblue");
@@ -202,8 +202,8 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
 }
 
 d3.queue() // Triggers Map JSON and data assynchronous reading
-  .defer(d3.json, "./json/BRMUE250GC_SIR_05.json")
-  .defer(d3.csv, "./csv/IDHM.csv",
+  .defer(d3.json, "./json/BRMUE250GC_SIR_05.json") //brasil
+  .defer(d3.csv, "./csv/IDHM.csv", // HDI
     function(d) {
       HDIByLocality.set(d.CD_GEOCMU, {
         IDHMT2010: +d.IDHM2010,
@@ -234,22 +234,22 @@ d3.queue() // Triggers Map JSON and data assynchronous reading
         IDHMR1991: +d.IDHMR1991, //  Income
         IDHML1991: +d.IDHML1991, //  Life expectancy
         IDHME1991: +d.IDHME1991, //  Education
-        R1991: +d.R1991, // 1991 Ranking
+        RT1991: +d.R1991, // 1991 Ranking
         IDHMT2000: +d.IDHM2000, // 2000 HDI total
         IDHMR2000: +d.IDHMR2000, //  Income
         IDHML2000: +d.IDHML2000, //  Life expectancy
         IDHME2000: +d.IDHME2000, //  Education
-        R2000: +d.R2000, // 2000 Ranking
+        RT2000: +d.R2000, // 2000 Ranking
         IDHMT2010: +d.IDHM2010, // 2010 HDI total
         IDHMR2010: +d.IDHMR2010, //  Income
         IDHML2010: +d.IDHML2010, //  Life expectancy
         IDHME2010: +d.IDHME2010, //  Education
-        R2010: +d.R2010, // 2000 Ranking
+        RT2010: +d.R2010, // 2000 Ranking
         NM_MUNNICIP: d.NM_MUNNICIP, // Normalized name
         CD_GEOCMU: d.CD_GEOCMU // Municipality code - Used in HDIByLocality mapping
       };
     })
-  .defer(d3.csv, "./csv/pop91_00_10_17.csv",
+  .defer(d3.csv, "./csv/pop91_00_10_17.csv", // popEst
     function(d) {
       if (+d.PopEst2017 > 0)
         totalMunicipalities++;
@@ -272,7 +272,7 @@ d3.queue() // Triggers Map JSON and data assynchronous reading
         Pop2010: +d.Pop2010
       };
     })
-  .defer(d3.csv, "./csv/AR_BR_MUN_2017.csv",
+  .defer(d3.csv, "./csv/AR_BR_MUN_2017.csv", // areasMun
     function(d) {
       var munArea = +d.AR_MUN_2017;
       if (munArea > 0)
@@ -314,18 +314,23 @@ function ready(error, brasil, HDI, popEst, areasMun) {
   // Fetches stroke width
   swidth = d3.select(".municipalities").style("stroke-width");
 
-  // The three top numMun HDIs
-  ranks = {
-    r2010: HDI.slice().sort(function(a, b) {
-      return a.R2010 - b.R2010;
-    }).slice(0, numMun),
-    r2000: HDI.slice().sort(function(a, b) {
-      return a.R2000 - b.R2000;
-    }).slice(0, numMun),
-    r1991: HDI.slice().sort(function(a, b) {
-      return a.R1991 - b.R1991;
-    }).slice(0, numMun)
-  };
+  var year, serie, index, sorted, ranked, i;
+  // Add ranking information for all indexes
+  for (year in {1991:0, 2000:1, 2010:2})
+    for (serie in {'L':0, 'E':1, 'R':2}) {
+      index = HDI.map(v => isNaN(v['IDHM'+serie+year]) ? 0 : v['IDHM'+serie+year]);
+      sorted = index.slice().sort(function(a, b) {
+        return b - a;
+      });
+      ranked = index.slice().map(function(v){return sorted.indexOf(v)+1});
+      for (var i = 0; i < HDI.length; i++)
+        HDI[i]['R'+serie+year] = ranked[i];
+    }
+
+  ranks = {};
+  for (year in {1991:0, 2000:1, 2010:2})
+    for (serie in {'T': 0, 'L':1, 'E':2, 'R':3})
+      ranks['r'+serie+year] = HDI.slice().sort(function(a, b){ return a['R'+serie+year] - b['R'+serie+year]}).slice(0, numMun);
 
   tablePrep();
   tableFill(HDISeries);

@@ -25,7 +25,8 @@ var svg = d3.select("svg#mapa"), // Map SVG object, defined at index.html
   swidth, // Stroke width, defined at css level, fetched here for reuse
   tooltip, // Map tooltip object
   numMun = 30, // # of Municipalities on the list
-  ranks; // First numMun municipalities by HDI
+  ranks,
+  color = colorDiverging; // First numMun municipalities by HDI
 
 
 function selectYearSeries() {
@@ -45,11 +46,18 @@ function selectYearSeries() {
   tableFill(selInd);
 }
 
-function color(i) {
-  var colorMap = ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee090', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695', '#ffffff'];
+function colorDiverging(i) {
+  return colorVec(i, ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee090', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695', '#ffffff']);
+}
+
+function colorIBGE(i) {
+  return colorVec(i, ['#d7191c', '#d7191c', '#d7191c', '#d7191c', '#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6', '#2c7bb6', '#ffffff']);
+}
+
+function colorVec(i, vec) {
   if (isNaN(i))
-    i = colorMap.length - 1;
-  return colorMap[i];
+    return vec[vec.length-1];
+  return vec[i];
 }
 
 function numBrazil(number, options) {
@@ -364,7 +372,7 @@ function ready(error, brasil, HDI, popEst, areasMun) {
     var colorList = [...Array(RANGE).keys()].map(i => [i, color(i)]);
     const WIDTH = 25,
       HEIGHT = 75,
-      X0 = 850,
+      X0 = 864,
       Y0 = 40;
 
     svg.append("g")
@@ -382,6 +390,16 @@ function ready(error, brasil, HDI, popEst, areasMun) {
         return d[1];
       });
 
+    /*
+    const indicators = [{y1: 0, y2: 5}, {y1:5, y2:6}, {y1: 6, y2: 7}, {y1:7, y2:8}, {y1:8, y2:10}]
+    svg.select(".label").selectAll("line").data(indicators).enter().append("line")
+      .attr("x1", X0-5)
+      .attr("x2", X0-5)
+      .attr("y1", function(d){return Y0+(d.y1*HEIGHT)+5;})
+      .attr("y2", function(d){return Y0+(d.y2*HEIGHT)-5;})
+      .style("stroke", "black")
+      .style("opacity", 0.7);
+     */
     labelTooltip();
 
     // Creates tooltip hook actions: WARNING "click" is disabled at this moment
@@ -398,7 +416,7 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       var tip = d3.select("div.myTip");
       var minV = +(d[0] * FACTOR).toPrecision(1),
         maxV = +(d[0] * FACTOR + FACTOR).toPrecision(1);
-      var k, municipalities, numMunicipalities, serie;
+      var k, municipalities, numMunicipalities, serie, nameSerie = {'T': 'IDHM', 'E': 'Educação', 'R': 'Renda', 'L': 'Expectativa de vida'};
 
       serie = document.getElementById('selecSerie').value;
       municipalities = svg.select(".municipalities").selectAll("path")
@@ -417,14 +435,29 @@ function ready(error, brasil, HDI, popEst, areasMun) {
 
       numMunicipalities = municipalities._groups[0].length;
 
-      k = "IDHM: de " + numBrazil(minV) + " a " + numBrazil(maxV) +
-        " - " +
+      k = nameSerie[serie] + ": de " + numBrazil(minV) + " a " + numBrazil(maxV) +
+        "<br>" + rangeIndex((minV+maxV)/2, serie) + "<br>" +
         numBrazil(numMunicipalities) +
         " (" + numBrazil(numMunicipalities / totalMunicipalities * 100, {
           maximumFractionDigits: 2
         }) + "%)";
       tip.html(k);
       return tooltip.style("visibility", "visible");
+    }
+
+    function rangeIndex(index, serie) {
+      const suffix = {"T": "o", "E": "a", "R": "a", "L": "a"};
+
+      if (index < 0.5)
+        return "Muito baix" + suffix[serie];
+      if (index < 0.6)
+        return "Baix" + suffix[serie];
+      if (index < 0.7)
+        return "Médi" + suffix[serie];
+      if (index < 0.8)
+        return "Alt" + suffix[serie];
+
+      return "Muito alt" + suffix[serie];
     }
 
     function labelMousemove(d) {
@@ -442,8 +475,15 @@ function ready(error, brasil, HDI, popEst, areasMun) {
 }
 
 function repaintMARKED() {
-  var serie;
+  var serie, colorMode;
   serie = document.getElementById('selecSerie').value;
+  colorMode = document.getElementById('colorMode').checked;
+
+  if (colorMode)
+    color = colorIBGE;
+  else
+    color = colorDiverging;
+
   svg.select(".municipalities").selectAll("path")
     .filter(function(mun) {
       return d3.select(this).style("fill") == "rgb(0, 0, 0)";
@@ -453,4 +493,24 @@ function repaintMARKED() {
       var i = HDIByLocality.get(d.properties.CD_GEOCMU);
       return color(quantize(i["IDHM" + serie + HDISeries]));
     });
+}
+
+function repaintAll() {
+  var serie, colorMode;
+  serie = document.getElementById('selecSerie').value;
+  colorMode = document.getElementById('colorMode').checked;
+
+  if (colorMode)
+    color = colorIBGE;
+  else
+    color = colorDiverging;
+
+  svg.select(".municipalities").selectAll("path")
+    //.transition().duration(250)
+    .style("fill", function(d) {
+      var i = HDIByLocality.get(d.properties.CD_GEOCMU);
+      return color(quantize(i["IDHM" + serie + HDISeries]));
+    });
+  svg.select(".label").selectAll("rect")
+     .style("fill", function(d){return color(quantize((d[0]/10)+0.05));})
 }

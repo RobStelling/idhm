@@ -114,10 +114,10 @@ function munMouseover(d) {
 
   serie = document.getElementById('selecSerie').value;
 
-  if (d != undefined) // Use path properties
+  if (d.properties != undefined) // Use path properties
     CD_GEOCMU = d.properties.CD_GEOCMU;
-  else // Use name attr from table (see tablePrep and tableFill)
-    CD_GEOCMU = this.attributes.name.nodeValue;
+  else                           // Use table value
+    CD_GEOCMU = d.attributes.name.nodeValue;
 
 
   indice = HDIByLocality.get(CD_GEOCMU);
@@ -180,11 +180,14 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
   table.html(tabHtml);
 
   d3.selectAll(".tpHDI")
-    .on("mouseover", munMouseover)
+    .on("mouseover", tableMouseover)
     .on("mousemove", tableMousemove)
     .on("mouseout", tableMouseout)
     .on("click", ignore);
 
+  function tableMouseover(d) {
+    return munMouseover(this);
+  }
   function tableMousemove(d) {
     return mouseMove(d);
   }

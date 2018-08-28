@@ -6,18 +6,23 @@
 const RANGE = 10,
   COLORMARK = "black";
 var svg = d3.select("svg#mapa"), // Map SVG object, defined at index.html
-  tableSel = undefined,
   width = 875, //+svg.attr("width"),
   height = 800, // +svg.attr("height"),
   HDIByLocality = d3.map(), // Maps municipality GEOCMU with their HDI per year
   // CD_GEOCMU -> [IDHM2010, IDHM2000, IDHM1991, MunicipalityName]
   totalMunicipalities = 0,
   totalArea = 0,
-  quantize = d3.scaleQuantize() // Quantize scale for the map colors, q[i]-9 styles are defined at CSS level
-  .domain([0, 1])
-  .range(d3.range(RANGE).map(function(i) {
-    return i; /* return "q" + i + "-9"; */
-  })),
+  quantizeDiverging = d3.scaleQuantize() // Quantize scale for the map colors, q[i]-9 styles are defined at CSS level
+               .domain([0, 1])
+               .range(d3.range(RANGE).map(function(i) {
+                 return i; /* return "q" + i + "-9"; */
+             })),
+  quantizeSlices = d3.scaleQuantize()
+                   .domain([0,1])
+                   .range(d3.range(10).map(function(i){
+                     return i < 5 ? 0 : i < 6 ? 1 : i < 7 ? 2 : i < 8 ? 3 : 4;
+                   })),
+  quantize = quantizeDiverging,
   projection = d3.geoMercator(), // Map projection
   HDISeries = +d3.select("#selecIndicador").node().value, // Current HDI series 2010: HDMI2010, 2000: HDMI2000, 1991: HDMI1991
   popMun = d3.map(), // Population by Municipality (CD_GEOCMU): [[pop2010, pop2000, pop1991], est2017]
@@ -28,43 +33,77 @@ var svg = d3.select("svg#mapa"), // Map SVG object, defined at index.html
   ranks,
   color = colorDiverging; // First numMun municipalities by HDI
 
-
+/*
+ * selectYearSeries, called if year or series changes on HTML form
+ */
 function selectYearSeries() {
-  var selInd, serie;
+  // If year or series have changed then:
+  // repaint Map
+  // update table
+  HDISeries = document.getElementById('selecIndicador').value;
+  repaintAll();
+  tableFill(HDISeries);
+}
 
-  selInd = document.getElementById('selecIndicador').value;
+function repaintAll() {
+  // Repaints the map, 1 second transition
+  repaintMap(function(d){return true;}, 1000);
+  // and label
+  svg.select(".label").selectAll("rect")
+     .transition().duration(1000).ease(d3.easeCubicInOut)
+     .style("fill", function(d){return color(quantize((d[0]/10)+0.05));})
+}
+
+function repaintMARKED() {
+  // Repaints all black regions, no transition
+  repaintMap(function(mun) {
+      return d3.select(this).style("fill") == "rgb(0, 0, 0)";
+    }, 0);
+}
+
+function repaintMap(filter, duration) {
+  var serie, sliceColorMode;
   serie = document.getElementById('selecSerie').value;
-  if (selInd != undefined && serie != undefined)
-    d3.selectAll("path")
-    .transition().duration(1000).ease(d3.easeCubicInOut)
+  sliceColorMode = document.getElementById('colorMode').checked;
+
+  if (sliceColorMode) {
+    color = colorSlices;
+    quantize = quantizeSlices;
+  }
+  else {
+    color = colorDiverging;
+    quantize = quantizeDiverging;
+  }
+
+  svg.select(".municipalities").selectAll("path")
+    .transition().duration(duration).ease(d3.easeCubicInOut)
+    .filter(filter)
+    //.transition().duration(250)
     .style("fill", function(d) {
       var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-      return i == undefined ? color(RANGE) : color(quantize(i["IDHM" + serie + selInd]));
+      return color(quantize(i["IDHM" + serie + HDISeries]));
     });
-
-  HDISeries = selInd;
-  tableFill(selInd);
 }
 
 function colorDiverging(i) {
   return colorVec(i, ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee090', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695', '#ffffff']);
 }
 
-function colorIBGE(i) {
-  return colorVec(i, ['#d7191c', '#d7191c', '#d7191c', '#d7191c', '#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6', '#2c7bb6', '#ffffff']);
+function colorSlices(i) {
+  return colorVec(i, ['#d7191c', '#fdae61', '#ffffbf', '#abd9e9', '#2c7bb6', '#ffffff']);
 }
 
 function colorVec(i, vec) {
   if (isNaN(i))
     return vec[vec.length-1];
-  return vec[i];
+  return vec[Math.min(Math.max(0, i), vec.length-1)];
 }
 
 function numBrazil(number, options) {
   return number.toLocaleString("pt-BR", options);
 }
 
-/* Can be called from a D3 selection or DOM selection.
+/* Can be called from a D3 mouseover or DOM mouseover.
  * CD_GEOCMU will come from data properties (d.properties) if it is being called from a DOM
  */
 function munMouseover(d) {
@@ -125,6 +164,9 @@ function ignore() {
   return;
 }
 
+/*
+ * Creates room for the HTML table and trigger hooks, called once
+ */
 function tablePrep() { // Builds the table tamplate for the HDI rank, with the first numMun Municipalities
   var i, table, tabHtml;
   table = d3.select("#leg1");
@@ -136,10 +178,8 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
 
   tabHtml += '</tbody>';
   table.html(tabHtml);
-  if (tableSel != undefined) {
-    tableSel = undefined; /* include code to cancel .on */
-  }
-  tableSel = d3.selectAll(".tpHDI")
+
+  d3.selectAll(".tpHDI")
     .on("mouseover", munMouseover)
     .on("mousemove", tableMousemove)
     .on("mouseout", tableMouseout)
@@ -158,12 +198,14 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
   }
 }
 
-function tableFill(year) { // Fill the table with the correct Municipalities for a specific Year
+/*
+ * Fills the table, called anytime the series or index changes
+ */
+function tableFill(year) {
   var i, munRanks, diff, dir, cor, tclose, serie, previous = {
     2010: 2000,
     2000: 1991
   };
-
 
   diff = "";
   dir = "";
@@ -206,9 +248,9 @@ function tableFill(year) { // Fill the table with the correct Municipalities for
     // d3.selectAll("path").filter(function(d){return d.properties.CD_GEOCMU == "1101807"})
   }
   d3.select("#leg1").style("display", "table");
-
 }
 
+// Reads map and HDI, population and area files
 d3.queue() // Triggers Map JSON and data assynchronous reading
   .defer(d3.json, "./json/BRMUE250GC_SIR_05.json") //brasil
   .defer(d3.csv, "./csv/IDHM.csv", // HDI
@@ -390,16 +432,6 @@ function ready(error, brasil, HDI, popEst, areasMun) {
         return d[1];
       });
 
-    /*
-    const indicators = [{y1: 0, y2: 5}, {y1:5, y2:6}, {y1: 6, y2: 7}, {y1:7, y2:8}, {y1:8, y2:10}]
-    svg.select(".label").selectAll("line").data(indicators).enter().append("line")
-      .attr("x1", X0-5)
-      .attr("x2", X0-5)
-      .attr("y1", function(d){return Y0+(d.y1*HEIGHT)+5;})
-      .attr("y2", function(d){return Y0+(d.y2*HEIGHT)-5;})
-      .style("stroke", "black")
-      .style("opacity", 0.7);
-     */
     labelTooltip();
 
     // Creates tooltip hook actions: WARNING "click" is disabled at this moment
@@ -415,10 +447,14 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       const FACTOR = 1 / RANGE;
       var tip = d3.select("div.myTip");
       var minV = +(d[0] * FACTOR).toPrecision(1),
-        maxV = +(d[0] * FACTOR + FACTOR).toPrecision(1);
-      var k, municipalities, numMunicipalities, serie, nameSerie = {'T': 'IDHM', 'E': 'Educação', 'R': 'Renda', 'L': 'Expectativa de vida'};
+          maxV = +(d[0] * FACTOR + FACTOR).toPrecision(1);
+      var k, municipalities, numMunicipalities, 
+          serie, nameSerie = {'T': 'IDHM', 'E': 'Educação', 'R': 'Renda', 'L': 'Expectativa de vida'},
+          sliceColorMode;
 
       serie = document.getElementById('selecSerie').value;
+      sliceColorMode = document.getElementById('colorMode').checked;
+
       municipalities = svg.select(".municipalities").selectAll("path")
         .filter(function(mun) {
           var GEOCMU, indice;
@@ -436,7 +472,7 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       numMunicipalities = municipalities._groups[0].length;
 
       k = nameSerie[serie] + ": de " + numBrazil(minV) + " a " + numBrazil(maxV) +
-        "<br>" + rangeIndex((minV+maxV)/2, serie) + "<br>" +
+        "<br>" + msgIndex((minV+maxV)/2, serie) + "<br>" +
         numBrazil(numMunicipalities) +
         " (" + numBrazil(numMunicipalities / totalMunicipalities * 100, {
           maximumFractionDigits: 2
@@ -445,19 +481,11 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       return tooltip.style("visibility", "visible");
     }
 
-    function rangeIndex(index, serie) {
+    function msgIndex(index, serie) {
       const suffix = {"T": "o", "E": "a", "R": "a", "L": "a"};
+      const msg = ["Muito baix", "Baix", "Médi", "Alt", "Muito alt"];
 
-      if (index < 0.5)
-        return "Muito baix" + suffix[serie];
-      if (index < 0.6)
-        return "Baix" + suffix[serie];
-      if (index < 0.7)
-        return "Médi" + suffix[serie];
-      if (index < 0.8)
-        return "Alt" + suffix[serie];
-
-      return "Muito alt" + suffix[serie];
+      return msg[quantizeSlices(index)] + suffix[serie];
     }
 
     function labelMousemove(d) {
@@ -472,45 +500,4 @@ function ready(error, brasil, HDI, popEst, areasMun) {
       return tooltip.style("visibility", "hidden");
     }
   }
-}
-
-function repaintMARKED() {
-  var serie, colorMode;
-  serie = document.getElementById('selecSerie').value;
-  colorMode = document.getElementById('colorMode').checked;
-
-  if (colorMode)
-    color = colorIBGE;
-  else
-    color = colorDiverging;
-
-  svg.select(".municipalities").selectAll("path")
-    .filter(function(mun) {
-      return d3.select(this).style("fill") == "rgb(0, 0, 0)";
-    })
-    //.transition().duration(250)
-    .style("fill", function(d) {
-      var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-      return color(quantize(i["IDHM" + serie + HDISeries]));
-    });
-}
-
-function repaintAll() {
-  var serie, colorMode;
-  serie = document.getElementById('selecSerie').value;
-  colorMode = document.getElementById('colorMode').checked;
-
-  if (colorMode)
-    color = colorIBGE;
-  else
-    color = colorDiverging;
-
-  svg.select(".municipalities").selectAll("path")
-    //.transition().duration(250)
-    .style("fill", function(d) {
-      var i = HDIByLocality.get(d.properties.CD_GEOCMU);
-      return color(quantize(i["IDHM" + serie + HDISeries]));
-    });
-  svg.select(".label").selectAll("rect")
-     .style("fill", function(d){return color(quantize((d[0]/10)+0.05));})
 }

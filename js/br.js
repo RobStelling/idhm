@@ -114,12 +114,7 @@ function munMouseover(d) {
 
   serie = document.getElementById('selecSerie').value;
 
-  if (d.properties != undefined) // Use path properties
-    CD_GEOCMU = d.properties.CD_GEOCMU;
-  else                           // Use table value
-    CD_GEOCMU = d.attributes.name.nodeValue;
-
-
+  CD_GEOCMU = d.properties.CD_GEOCMU;
   indice = HDIByLocality.get(CD_GEOCMU);
   nomeMun = indice.municipio;
 
@@ -140,8 +135,8 @@ function munMouseover(d) {
   }
 
   tip.html(k);
-  d3.selectAll("path").filter(function(dd) {
-    return dd.properties.CD_GEOCMU == CD_GEOCMU;
+  d3.selectAll("path").filter(function(mun) {
+    return mun.properties.CD_GEOCMU == CD_GEOCMU;
   }).style("stroke-width", "5px").style("stroke", "red");
 
   return tooltip.style("visibility", "visible");
@@ -186,8 +181,9 @@ function tablePrep() { // Builds the table tamplate for the HDI rank, with the f
     .on("click", ignore);
 
   function tableMouseover(d) {
-    return munMouseover(this);
+    return munMouseover({properties:{CD_GEOCMU: this.attributes.name.nodeValue}});
   }
+
   function tableMousemove(d) {
     return mouseMove(d);
   }

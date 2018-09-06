@@ -85,6 +85,10 @@ function repaintMap(filter, duration) {
     });
 }
 
+function resetaMapa() {
+  d3.select(".municipalities").attr("transform", d3.zoomIdentity);
+}
+
 function colorDiverging(i) {
   return colorVec(i, ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee090', '#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695', '#ffffff']);
 }
@@ -343,8 +347,8 @@ function ready(error, brasil, HDI, popEst, areasMun) {
   projection.fitSize([width, height], topojson.feature(brasil, brasil.objects.BRMUN).features);
 
   var braF = topojson.feature(brasil, brasil.objects.BRMUN),
-    path = d3.geoPath()
-    .projection(projection.fitSize([width, height], braF));
+      path = d3.geoPath()
+               .projection(projection.fitSize([width, height], braF));
 
   // Paints map
   svg.append("g")
@@ -381,6 +385,26 @@ function ready(error, brasil, HDI, popEst, areasMun) {
     for (serie in {'T': 0, 'L':1, 'E':2, 'R':3})
       ranks['r'+serie+year] = HDI.slice().sort(function(a, b){ return a['R'+serie+year] - b['R'+serie+year]}).slice(0, numMun);
 
+  /* Zoom is not performing well with 5570 municipalities, need to investigage alternatives
+  var zoomMap;
+  zoomMap = d3.select(".municipalities");
+  zoomMap
+    .call(d3.zoom()
+             .scaleExtent([1,16])
+                 //.size( [w + cl.margin.right + cl.margin.left, h + cl.margin.top + cl.margin.bottom])
+                 .on("zoom", zoomed));
+
+  function zoomed() {
+    var c;
+    //svg.attr("transform", "translate(" + [d3.event.translate[0]+cl.margin.left+cl.margin.right, d3.event.translate[1]+cl.margin.top+cl.margin.bottom] + ")scale(" + d3.event.scale + ")");
+    zoomMap.attr("transform", d3.event.transform);
+    //svg.selectAll(".cisp").style("stroke-width", (0.4 / d3.event.scale) + "px");
+    //c = "circle";
+    //svg.selectAll(c).attr("r", 1.5 / d3.event.scale + "px");
+    
+  }
+  */
+
   tablePrep();
   tableFill(HDISeries);
   createTooltip();
@@ -398,7 +422,7 @@ function ready(error, brasil, HDI, popEst, areasMun) {
 
   // Creates tooltip hook actions: WARNING "click" is disabled at this moment
   function hookTooltip() {
-    var svg = d3.select(".municipalities").selectAll("path")
+    d3.select(".municipalities").selectAll("path")
       .on("mouseover", munMouseover)
       .on("mousemove", munMousemove)
       .on("mouseout", munMouseout)
